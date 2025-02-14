@@ -51,15 +51,18 @@ else:
 # Formulario de registro de asistencia
 st.title("Registro de Asistencia")
 nombre_docente = st.text_input("Nombre del Docente:")
-hora_entrada = st.time_input("Hora de Entrada:", value=datetime.datetime.now().time())
-hora_salida = st.time_input("Hora de Salida:", value=datetime.datetime.now().time())
+hora_entrada = st.time_input("Hora de Entrada:", value=datetime.datetime.now().replace(second=0, microsecond=0).time())
+hora_salida = st.time_input("Hora de Salida:", value=datetime.datetime.now().replace(second=0, microsecond=0).time())
 
 if st.button("Registrar Asistencia"):
     if nombre_docente:
-        nuevo_registro = pd.DataFrame([[nombre_docente, hora_entrada, hora_salida]], columns=columnas)
-        df_asistencia = pd.concat([df_asistencia, nuevo_registro], ignore_index=True)
-        df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
-        st.success("Asistencia registrada correctamente")
+        if not df_asistencia[(df_asistencia["Nombre"] == nombre_docente) & (df_asistencia["Hora de Entrada"] == str(hora_entrada))].empty:
+            st.warning("El docente ya ha sido registrado con esta hora de entrada.")
+        else:
+            nuevo_registro = pd.DataFrame([[nombre_docente, hora_entrada, hora_salida]], columns=columnas)
+            df_asistencia = pd.concat([df_asistencia, nuevo_registro], ignore_index=True)
+            df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
+            st.success("Asistencia registrada correctamente")
     else:
         st.warning("Debe ingresar el nombre del docente.")
 
@@ -71,3 +74,5 @@ st.dataframe(df_asistencia)
 if st.button("Generar Lista de Asistencia para Firma"):
     df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
     st.success(f"Lista de asistencia guardada en: {archivo_ruta}")
+    st.balloons()  # Efecto visual de confirmación
+
