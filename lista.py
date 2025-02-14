@@ -30,7 +30,7 @@ if not os.path.exists(ONEDRIVE_PATH):
 # Cargar base de datos de docentes desde el repositorio
 PLANTILLA_PATH = "PLANTILLA 29D AUDITORIA.xlsx"
 docentes_df = pd.read_excel(PLANTILLA_PATH, engine='openpyxl')
-docentes = docentes_df[["APELLIDO PATERNO", "APELLIDO MATERNO", "NOMBRE (S)"]].astype(str).agg(' ', axis=1).tolist()
+docentes = docentes_df[['APELLIDO PATERNO', 'APELLIDO MATERNO', 'NOMBRE (S)']].astype(str).apply(lambda x: ' '.join(x.dropna()), axis=1).tolist()
 
 # Formulario de registro de asistencia
 st.title("Registro de Asistencia")
