@@ -40,4 +40,4 @@ if not actividad or not fecha_actividad:
     st.stop()
 
 # Cargar base de datos de docentes desde la plantilla en OneDrive
-PLANTILLA_PATH = "C:\Users\sup11\OneDrive\Attachments\Documentos\Interfaces de phyton\Lista de asistencia\PLANTILLA.xlsx"
+PLANTILLA_PATH = r"C:\Users\sup11\OneDrive\Attachments\Documentos\Interfaces de phyton\Lista de asistencia\PLANTILLA.xlsx"
