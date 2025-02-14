@@ -1,0 +1,87 @@
+>>> import streamlit as st
+... import pandas as pd
+... import datetime
+... import os
+... 
+... # Configuración de la contraseña
+... PASSWORD = "defvm11"
+... 
+... # Estado de autenticación
+... if "authenticated" not in st.session_state:
+...     st.session_state.authenticated = False
+... 
+... # Página de inicio de sesión
+... if not st.session_state.authenticated:
+...     st.title("Registro de Asistencia")
+...     password_input = st.text_input("Ingrese la contraseña:", type="password")
+...     if st.button("Ingresar"):
+...         if password_input == PASSWORD:
+...             st.session_state.authenticated = True
+...             st.experimental_rerun()
+...         else:
+...             st.error("Contraseña incorrecta")
+...     st.stop()
+... 
+... # Directorio de almacenamiento en OneDrive
+... ONEDRIVE_PATH = "C:/Users/sup11/OneDrive/Attachments/Documentos/Interfaces de phyton/Lista de asistencia/Listas de asistencia/"
+... if not os.path.exists(ONEDRIVE_PATH):
+...     os.makedirs(ONEDRIVE_PATH)
+... 
+... # Cargar base de datos de docentes
+... PLANTILLA_PATH = "C:/Users/sup11/OneDrive/Attachments/Documentos/Interfaces de phyton/Lista de asistencia/PLANTILLA 29D AUDITORIA.xlsx"
+... docentes_df = pd.read_excel(PLANTILLA_PATH)
+... docentes = docentes_df[["APELLIDO PATERNO", "APELLIDO MATERNO", "NOMBRE (S)"]].astype(str).agg(' ', axis=1).tolist()
+... 
+# Formulario de registro de asistencia
+st.title("Registro de Asistencia")
+nombre = st.selectbox("Seleccione su nombre:", docentes)
+hora_entrada = st.time_input("Hora de Entrada", value=datetime.datetime.now().time())
+hora_salida = st.time_input("Hora de Salida", value=datetime.datetime.now().time())
+
+# Guardar datos en archivo con formato específico
+if st.button("Registrar Asistencia"):
+    fecha = datetime.date.today().strftime("%Y%m%d")
+    folio = len(os.listdir(ONEDRIVE_PATH)) + 1
+    archivo_nombre = f"actividad_{fecha}_{folio}.xlsx"
+    archivo_ruta = os.path.join(ONEDRIVE_PATH, archivo_nombre)
+    
+    # Cargar o crear el archivo de asistencia
+    if os.path.exists(archivo_ruta):
+        df = pd.read_excel(archivo_ruta)
+    else:
+        df = pd.DataFrame(columns=["Fecha", "Nombre", "Hora de Entrada", "Hora de Salida"])
+    
+    # Agregar nuevo registro
+    nuevo_registro = pd.DataFrame({
+        "Fecha": [datetime.date.today()],
+        "Nombre": [nombre],
+        "Hora de Entrada": [hora_entrada],
+        "Hora de Salida": [hora_salida]
+    })
+    df = pd.concat([df, nuevo_registro], ignore_index=True)
+    df.to_excel(archivo_ruta, index=False)
+    st.success(f"Registro guardado correctamente en {archivo_ruta}")
+
+# Mostrar la tabla de asistencia
+st.subheader("Lista de Asistencia del día")
+if os.path.exists(archivo_ruta):
+    df = pd.read_excel(archivo_ruta)
+    st.dataframe(df)
+
+# Botón para descargar el archivo Excel
+def get_table_download_link(df, archivo_nombre):
+    """Genera un enlace para descargar el archivo Excel en cualquier momento"""
+    from io import BytesIO
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    processed_data = output.getvalue()
+    return processed_data
+
+if os.path.exists(archivo_ruta):
+    st.download_button(
+        label="Descargar Asistencia",
+        data=get_table_download_link(df, archivo_nombre),
+        file_name=archivo_nombre,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
