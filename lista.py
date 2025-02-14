@@ -23,9 +23,10 @@ if not st.session_state.authenticated:
             st.error("Contraseña incorrecta")
     st.stop()
 
-# Directorio de almacenamiento
+# Directorio de almacenamiento en Streamlit Cloud
 ONEDRIVE_PATH = "./Listas_de_asistencia/"
-os.makedirs(ONEDRIVE_PATH, exist_ok=True)
+if not os.path.exists(ONEDRIVE_PATH):
+    os.makedirs(ONEDRIVE_PATH)
 
 # Registro de actividad y fecha
 st.title("Registro de Actividad")
@@ -38,24 +39,8 @@ if not actividad or not fecha_actividad:
 
 # Cargar base de datos de docentes desde el repositorio
 PLANTILLA_PATH = "LISTA DE ASISTENCIA.xlsx"
-
-try:
-    docentes_df = pd.read_excel(PLANTILLA_PATH, engine='openpyxl')
-    columnas_reales = docentes_df.columns.str.strip().str.upper()
-    
-    # Verificar nombres de columnas
-    columnas_esperadas = ["APELLIDO PATERNO", "APELLIDO MATERNO", "NOMBRE (S)"]
-    if not all(col in columnas_reales for col in columnas_esperadas):
-        st.error(f"Las columnas esperadas no existen en el archivo. Se encontraron: {docentes_df.columns.tolist()}")
-        st.stop()
-    
-    # Procesar nombres correctamente
-    docentes_df.columns = columnas_reales  # Normaliza nombres de columnas
-    docentes = docentes_df[columnas_esperadas].astype(str).apply(lambda x: ' '.join(x.dropna()), axis=1).tolist()
-
-except Exception as e:
-    st.error(f"Error al cargar el archivo Excel: {e}")
-    st.stop()
+docentes_df = pd.read_excel(PLANTILLA_PATH, engine='openpyxl')
+docentes = docentes_df[['APELLIDO PATERNO', 'APELLIDO MATERNO', 'NOMBRE (S)']].astype(str).apply(lambda x: ' '.join(x.dropna()), axis=1).tolist()
 
 # Formulario de registro de asistencia
 st.title("Registro de Asistencia")
@@ -77,11 +62,11 @@ if st.button("Registrar Asistencia"):
     
     # Agregar nuevo registro
     nuevo_registro = pd.DataFrame({
-        "Fecha": [fecha_actividad.strftime("%Y-%m-%d")] * len(nombres_seleccionados),
+        "Fecha": [fecha_actividad] * len(nombres_seleccionados),
         "Actividad": [actividad] * len(nombres_seleccionados),
         "Nombre": nombres_seleccionados,
-        "Hora de Entrada": [hora_entrada.strftime("%H:%M")] * len(nombres_seleccionados),
-        "Hora de Salida": [hora_salida.strftime("%H:%M")] * len(nombres_seleccionados),
+        "Hora de Entrada": [hora_entrada] * len(nombres_seleccionados),
+        "Hora de Salida": [hora_salida] * len(nombres_seleccionados),
         "Firma": [""] * len(nombres_seleccionados)  # Espacio en blanco para firma manual
     })
     df = pd.concat([df, nuevo_registro], ignore_index=True)
@@ -101,7 +86,7 @@ if st.button("Generar Lista de Asistencia"):
         st.success("Lista de asistencia generada con éxito. Puede descargar el archivo.")
     else:
         st.error("Contraseña incorrecta. No se puede generar la lista.")
-
+    
 # Botón para descargar el archivo Excel
 def get_table_download_link(df, file_name):
     """Genera un archivo descargable de Excel"""
@@ -118,4 +103,3 @@ if os.path.exists(archivo_ruta):
         file_name=archivo_nombre,
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
