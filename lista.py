@@ -3,8 +3,6 @@ import pandas as pd
 import datetime
 import os
 from io import BytesIO
-from PIL import Image
-import base64
 
 # Configuración de la contraseña
 PASSWORD = "defvm11"
@@ -26,7 +24,7 @@ if not st.session_state.authenticated:
     st.stop()
 
 # Directorio de almacenamiento en OneDrive
-ONEDRIVE_PATH = "C:\\Users\\sup11\\OneDrive\\Attachments\\Documentos\\Interfaces de phyton\\Lista de asistencia\\Listas de asistencia"
+ONEDRIVE_PATH = r"C:\\Users\\sup11\\OneDrive\\Attachments\\Documentos\\Interfaces de phyton\\Lista de asistencia\\Listas de asistencia"
 if not os.path.exists(ONEDRIVE_PATH):
     os.makedirs(ONEDRIVE_PATH)
 
@@ -39,5 +37,37 @@ if not actividad or not fecha_actividad:
     st.warning("Debe ingresar la actividad y la fecha antes de continuar.")
     st.stop()
 
-# Cargar base de datos de docentes desde la plantilla en OneDrive
-PLANTILLA_PATH = r"C:\Users\sup11\OneDrive\Attachments\Documentos\Interfaces de phyton\Lista de asistencia\PLANTILLA.xlsx"
+# Nombre del archivo de asistencia
+nombre_archivo = f"Asistencia_{actividad}_{fecha_actividad}.xlsx"
+archivo_ruta = os.path.join(ONEDRIVE_PATH, nombre_archivo)
+
+# Inicializar dataframe de asistencia
+columnas = ["Nombre", "Hora de Entrada", "Hora de Salida"]
+if os.path.exists(archivo_ruta):
+    df_asistencia = pd.read_excel(archivo_ruta, engine='openpyxl')
+else:
+    df_asistencia = pd.DataFrame(columns=columnas)
+
+# Formulario de registro de asistencia
+st.title("Registro de Asistencia")
+nombre_docente = st.text_input("Nombre del Docente:")
+hora_entrada = st.time_input("Hora de Entrada:", value=datetime.datetime.now().time())
+hora_salida = st.time_input("Hora de Salida:", value=datetime.datetime.now().time())
+
+if st.button("Registrar Asistencia"):
+    if nombre_docente:
+        nuevo_registro = pd.DataFrame([[nombre_docente, hora_entrada, hora_salida]], columns=columnas)
+        df_asistencia = pd.concat([df_asistencia, nuevo_registro], ignore_index=True)
+        df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
+        st.success("Asistencia registrada correctamente")
+    else:
+        st.warning("Debe ingresar el nombre del docente.")
+
+# Mostrar la tabla de asistencia
+st.subheader("Lista de Asistencia del día")
+st.dataframe(df_asistencia)
+
+# Botón para finalizar y generar archivo final
+if st.button("Generar Lista de Asistencia para Firma"):
+    df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
+    st.success(f"Lista de asistencia guardada en: {archivo_ruta}")
