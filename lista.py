@@ -17,7 +17,7 @@ if not st.session_state.authenticated:
     if st.button("Ingresar"):
         if password_input == PASSWORD:
             st.session_state.authenticated = True
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.error("Contraseña incorrecta")
     st.stop()
@@ -46,7 +46,7 @@ if st.button("Registrar Asistencia"):
     archivo_ruta = os.path.join(ONEDRIVE_PATH, archivo_nombre)
     
     # Cargar o crear el archivo de asistencia
-    if os.path.exists(archivo_ruta):
+    if 'archivo_ruta' in locals() and os.path.exists(archivo_ruta):
         df = pd.read_excel(archivo_ruta, engine='openpyxl')
     else:
         df = pd.DataFrame(columns=["Fecha", "Nombre", "Hora de Entrada", "Hora de Salida"])
