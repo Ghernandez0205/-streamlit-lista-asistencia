@@ -42,6 +42,18 @@ if not actividad or not fecha_actividad:
 # Cargar base de datos de docentes desde la plantilla en OneDrive
 PLANTILLA_PATH = "C:\\Users\\sup11\\OneDrive\\Attachments\\Documentos\\Interfaces de phyton\\Lista de asistencia\\PLANTILLA 29D AUDITORIA.xlsx"
 
+if not os.path.exists(PLANTILLA_PATH):
+    st.error(f"El archivo de plantilla no se encontró en la ruta especificada: {PLANTILLA_PATH}")
+    archivo_subido = st.file_uploader("Cargue manualmente la plantilla de docentes en formato Excel:", type=["xlsx"])
+    if archivo_subido:
+        PLANTILLA_PATH = os.path.join(ONEDRIVE_PATH, "PLANTILLA 29D AUDITORIA.xlsx")
+        with open(PLANTILLA_PATH, "wb") as f:
+            f.write(archivo_subido.getbuffer())
+        st.success("Archivo de plantilla guardado correctamente. Por favor, recargue la aplicación.")
+        st.stop()
+    else:
+        st.stop()
+
 try:
     docentes_df = pd.read_excel(PLANTILLA_PATH, engine='openpyxl')
     columnas_esperadas = ["APELLIDO PATERNO", "APELLIDO MATERNO", "NOMBRE (S)"]
