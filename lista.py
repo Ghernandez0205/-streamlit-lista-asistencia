@@ -17,7 +17,7 @@ if not st.session_state.authenticated:
     if st.button("Ingresar"):
         if password_input == PASSWORD:
             st.session_state.authenticated = True
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Contraseña incorrecta")
     st.stop()
