@@ -35,8 +35,8 @@ docentes = docentes_df[['APELLIDO PATERNO', 'APELLIDO MATERNO', 'NOMBRE (S)']].a
 # Formulario de registro de asistencia
 st.title("Registro de Asistencia")
 nombres_seleccionados = st.multiselect("Seleccione los nombres:", docentes)
-hora_entrada = st.time_input("Hora de Entrada", value=datetime.datetime.now().replace(second=0, microsecond=0).time(), format="%H:%M")
-hora_salida = st.time_input("Hora de Salida", value=datetime.datetime.now().replace(second=0, microsecond=0).time(), format="%H:%M")
+hora_entrada = st.time_input("Hora de Entrada", value=datetime.datetime.now().replace(second=0, microsecond=0).strftime('%H:%M') )
+hora_salida = st.time_input("Hora de Salida", value=datetime.datetime.now().replace(second=0, microsecond=0).strftime('%H:%M') )
 
 # Guardar datos en archivo con formato específico
 if st.button("Registrar Asistencia"):
