@@ -3,6 +3,9 @@ import pandas as pd
 import datetime
 import os
 from io import BytesIO
+from streamlit_drawable_canvas import st_canvas
+from PIL import Image
+import base64
 
 # Configuración de la contraseña
 PASSWORD = "defvm11"
@@ -23,8 +26,8 @@ if not st.session_state.authenticated:
             st.error("Contraseña incorrecta")
     st.stop()
 
-# Directorio de almacenamiento en Streamlit Cloud
-ONEDRIVE_PATH = "./Listas_de_asistencia/"
+# Directorio de almacenamiento en OneDrive
+ONEDRIVE_PATH = "C:\\Users\\sup11\\OneDrive\\Attachments\\Documentos\\Interfaces de phyton\\Lista de asistencia\\Listas de asistencia"
 if not os.path.exists(ONEDRIVE_PATH):
     os.makedirs(ONEDRIVE_PATH)
 
@@ -37,10 +40,19 @@ if not actividad or not fecha_actividad:
     st.warning("Debe ingresar la actividad y la fecha antes de continuar.")
     st.stop()
 
-# Cargar base de datos de docentes desde el repositorio
-PLANTILLA_PATH = "LISTA DE ASISTENCIA.xlsx"
-docentes_df = pd.read_excel(PLANTILLA_PATH, engine='openpyxl')
-docentes = docentes_df[['APELLIDO PATERNO', 'APELLIDO MATERNO', 'NOMBRE (S)']].astype(str).apply(lambda x: ' '.join(x.dropna()), axis=1).tolist()
+# Cargar base de datos de docentes desde la plantilla en OneDrive
+PLANTILLA_PATH = "C:\\Users\\sup11\\OneDrive\\Attachments\\Documentos\\Interfaces de phyton\\Lista de asistencia\\PLANTILLA 29D AUDITORIA.xlsx"
+
+try:
+    docentes_df = pd.read_excel(PLANTILLA_PATH, engine='openpyxl')
+    columnas_esperadas = ["APELLIDO PATERNO", "APELLIDO MATERNO", "NOMBRE (S)"]
+    if not all(col in docentes_df.columns for col in columnas_esperadas):
+        st.error(f"Las columnas esperadas no existen en el archivo. Se encontraron: {list(docentes_df.columns)}")
+        st.stop()
+    docentes = docentes_df[columnas_esperadas].astype(str).apply(lambda x: ' '.join(x.dropna()), axis=1).tolist()
+except Exception as e:
+    st.error(f"Error al leer el archivo de docentes: {e}")
+    st.stop()
 
 # Formulario de registro de asistencia
 st.title("Registro de Asistencia")
@@ -58,7 +70,7 @@ if st.button("Registrar Asistencia"):
     if os.path.exists(archivo_ruta):
         df = pd.read_excel(archivo_ruta, engine='openpyxl')
     else:
-        df = pd.DataFrame(columns=["Fecha", "Actividad", "Nombre", "Hora de Entrada", "Hora de Salida", "Firma"])
+        df = pd.DataFrame(columns=["Fecha", "Actividad", "Nombre", "Hora de Entrada", "Hora de Salida"])
     
     # Agregar nuevo registro
     nuevo_registro = pd.DataFrame({
@@ -66,8 +78,7 @@ if st.button("Registrar Asistencia"):
         "Actividad": [actividad] * len(nombres_seleccionados),
         "Nombre": nombres_seleccionados,
         "Hora de Entrada": [hora_entrada] * len(nombres_seleccionados),
-        "Hora de Salida": [hora_salida] * len(nombres_seleccionados),
-        "Firma": [""] * len(nombres_seleccionados)  # Espacio en blanco para firma manual
+        "Hora de Salida": [hora_salida] * len(nombres_seleccionados)
     })
     df = pd.concat([df, nuevo_registro], ignore_index=True)
     df.to_excel(archivo_ruta, index=False, engine='openpyxl')
