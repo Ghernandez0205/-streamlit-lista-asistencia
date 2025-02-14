@@ -34,9 +34,9 @@ docentes = docentes_df[['APELLIDO PATERNO', 'APELLIDO MATERNO', 'NOMBRE (S)']].a
 
 # Formulario de registro de asistencia
 st.title("Registro de Asistencia")
-nombre = st.selectbox("Seleccione su nombre:", docentes)
-hora_entrada = st.time_input("Hora de Entrada", value=datetime.datetime.now().time())
-hora_salida = st.time_input("Hora de Salida", value=datetime.datetime.now().time())
+nombres_seleccionados = st.multiselect("Seleccione los nombres:", docentes)
+hora_entrada = st.time_input("Hora de Entrada", value=datetime.datetime.now().replace(second=0, microsecond=0).time(), format="%H:%M")
+hora_salida = st.time_input("Hora de Salida", value=datetime.datetime.now().replace(second=0, microsecond=0).time(), format="%H:%M")
 
 # Guardar datos en archivo con formato específico
 if st.button("Registrar Asistencia"):
@@ -53,11 +53,11 @@ if st.button("Registrar Asistencia"):
     
     # Agregar nuevo registro
     nuevo_registro = pd.DataFrame({
-        "Fecha": [datetime.date.today()],
-        "Nombre": [nombre],
-        "Hora de Entrada": [hora_entrada],
-        "Hora de Salida": [hora_salida]
-    })
+    "Fecha": [datetime.date.today()] * len(nombres_seleccionados),
+    "Nombre": nombres_seleccionados,
+    "Hora de Entrada": [hora_entrada] * len(nombres_seleccionados),
+    "Hora de Salida": [hora_salida] * len(nombres_seleccionados)
+})
     df = pd.concat([df, nuevo_registro], ignore_index=True)
     df.to_excel(archivo_ruta, index=False, engine='openpyxl')
     st.success(f"Registro guardado correctamente en {archivo_ruta}")
