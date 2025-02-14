@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 import os
+from io import BytesIO
 
 # Configuración de la contraseña
 PASSWORD = "defvm11"
@@ -37,7 +38,7 @@ if not actividad or not fecha_actividad:
     st.stop()
 
 # Cargar base de datos de docentes desde el repositorio
-PLANTILLA_PATH = "PLANTILLA 29D AUDITORIA.xlsx"
+PLANTILLA_PATH = "LISTA DE ASISTENCIA.xlsx"
 docentes_df = pd.read_excel(PLANTILLA_PATH, engine='openpyxl')
 docentes = docentes_df[['APELLIDO PATERNO', 'APELLIDO MATERNO', 'NOMBRE (S)']].astype(str).apply(lambda x: ' '.join(x.dropna()), axis=1).tolist()
 
@@ -50,15 +51,14 @@ hora_salida = st.time_input("Hora de Salida", value=datetime.datetime.now().repl
 # Guardar datos en archivo con formato específico
 if st.button("Registrar Asistencia"):
     fecha = fecha_actividad.strftime("%Y%m%d")
-    folio = len(os.listdir(ONEDRIVE_PATH)) + 1
-    archivo_nombre = f"asistencia_{actividad}_{fecha}_{folio}.xlsx"
+    archivo_nombre = f"asistencia_{actividad}_{fecha}.xlsx"
     archivo_ruta = os.path.join(ONEDRIVE_PATH, archivo_nombre)
     
     # Cargar o crear el archivo de asistencia
     if os.path.exists(archivo_ruta):
         df = pd.read_excel(archivo_ruta, engine='openpyxl')
     else:
-        df = pd.DataFrame(columns=["Fecha", "Actividad", "Nombre", "Hora de Entrada", "Hora de Salida"])
+        df = pd.DataFrame(columns=["Fecha", "Actividad", "Nombre", "Hora de Entrada", "Hora de Salida", "Firma"])
     
     # Agregar nuevo registro
     nuevo_registro = pd.DataFrame({
@@ -66,7 +66,8 @@ if st.button("Registrar Asistencia"):
         "Actividad": [actividad] * len(nombres_seleccionados),
         "Nombre": nombres_seleccionados,
         "Hora de Entrada": [hora_entrada] * len(nombres_seleccionados),
-        "Hora de Salida": [hora_salida] * len(nombres_seleccionados)
+        "Hora de Salida": [hora_salida] * len(nombres_seleccionados),
+        "Firma": [""] * len(nombres_seleccionados)  # Espacio en blanco para firma manual
     })
     df = pd.concat([df, nuevo_registro], ignore_index=True)
     df.to_excel(archivo_ruta, index=False, engine='openpyxl')
@@ -87,9 +88,8 @@ if st.button("Generar Lista de Asistencia"):
         st.error("Contraseña incorrecta. No se puede generar la lista.")
     
 # Botón para descargar el archivo Excel
-def get_table_download_link(df):
+def get_table_download_link(df, file_name):
     """Genera un archivo descargable de Excel"""
-    from io import BytesIO
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False)
@@ -99,7 +99,7 @@ def get_table_download_link(df):
 if os.path.exists(archivo_ruta):
     st.download_button(
         label="Descargar Asistencia",
-        data=get_table_download_link(df),
+        data=get_table_download_link(df, archivo_nombre),
         file_name=archivo_nombre,
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
