@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 import os
+import subprocess
 from io import BytesIO
 
 # Configuración de la contraseña
@@ -56,10 +57,10 @@ hora_salida = st.time_input("Hora de Salida:", value=datetime.datetime.now().rep
 
 if st.button("Registrar Asistencia"):
     if nombre_docente:
-        if not df_asistencia[(df_asistencia["Nombre"] == nombre_docente) & (df_asistencia["Hora de Entrada"] == str(hora_entrada))].empty:
+        if ((df_asistencia["Nombre"] == nombre_docente) & (df_asistencia["Hora de Entrada"] == str(hora_entrada))).any():
             st.warning("El docente ya ha sido registrado con esta hora de entrada.")
         else:
-            nuevo_registro = pd.DataFrame([[nombre_docente, hora_entrada, hora_salida]], columns=columnas)
+            nuevo_registro = pd.DataFrame([[nombre_docente.strip().title(), str(hora_entrada), str(hora_salida)]], columns=columnas)
             df_asistencia = pd.concat([df_asistencia, nuevo_registro], ignore_index=True)
             df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
             st.success("Asistencia registrada correctamente")
@@ -75,4 +76,22 @@ if st.button("Generar Lista de Asistencia para Firma"):
     df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
     st.success(f"Lista de asistencia guardada en: {archivo_ruta}")
     st.balloons()  # Efecto visual de confirmación
+    # Opcion de descarga manual
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_asistencia.to_excel(writer, index=False, sheet_name="Asistencia")
+    output.seek(0)
+    st.download_button(label="Descargar Lista de Asistencia", data=output, file_name=nombre_archivo, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+# Confirmar sincronización con OneDrive
+if os.path.exists(archivo_ruta):
+    st.success("El archivo está en OneDrive y listo para imprimir.")
+else:
+    st.warning("No se pudo verificar la sincronización con OneDrive. Descargue el archivo manualmente.")
+
+# Botón para abrir la carpeta de OneDrive directamente
+def abrir_carpeta():
+    subprocess.run(["explorer", ONEDRIVE_PATH], shell=True)
+
+if st.button("Abrir carpeta de OneDrive"):
+    abrir_carpeta()
