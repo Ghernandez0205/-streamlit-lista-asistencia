@@ -44,8 +44,25 @@ def conectar_db():
         st.error(f"Error al conectar con la base de datos: {e}")
         st.stop()
 
+# Verificar y crear la tabla docentes si no existe
+def verificar_tabla():
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS docentes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            apellido_paterno TEXT NOT NULL,
+            apellido_materno TEXT NOT NULL,
+            nombre TEXT NOT NULL,
+            activo INTEGER DEFAULT 1
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
 # Obtener lista de docentes
 def obtener_docentes():
+    verificar_tabla()
     try:
         conn = conectar_db()
         cursor = conn.cursor()
@@ -74,13 +91,6 @@ columnas = ["No.", "Nombre Completo", "Hora de Entrada", "Firma", "Hora de Salid
 if os.path.exists(archivo_ruta):
     try:
         df_asistencia = pd.read_excel(archivo_ruta, engine='openpyxl')
-        
-        # **🛠 Eliminar columnas duplicadas antes de concatenar**
-        df_asistencia = df_asistencia.loc[:, ~df_asistencia.columns.duplicated()].copy()
-
-        # **🛠 Verificar que el índice no tenga valores repetidos**
-        df_asistencia = df_asistencia.reset_index(drop=True)
-
     except Exception as e:
         st.error(f"Error al leer el archivo de asistencia: {e}")
         df_asistencia = pd.DataFrame(columns=columnas)
@@ -90,31 +100,22 @@ else:
 # Formulario de registro de asistencia
 st.title("Registro de Asistencia")
 docentes = obtener_docentes()
-docentes_seleccionados = st.multiselect("Seleccione los Docentes:", docentes)
-
-hora_entrada_base = st.time_input("Hora de Entrada:")
+nombres_docentes = st.multiselect("Seleccione los Docentes:", docentes)
+hora_entrada = st.time_input("Hora de Entrada:")
 hora_salida = st.time_input("Hora de Salida:")
 
 if st.button("Registrar Asistencia"):
-    if docentes_seleccionados:
-        registros = []
-        for i, docente in enumerate(docentes_seleccionados):
-            hora_entrada = (datetime.datetime.combine(datetime.date.today(), hora_entrada_base) + datetime.timedelta(minutes=i)).time()
-            registros.append([len(df_asistencia) + 1 + i, docente, str(hora_entrada), "", str(hora_salida), ""])
-
-        df_nuevos = pd.DataFrame(registros, columns=columnas)
-
-        # **🔧 Validar que las columnas son correctas**
-        df_nuevos = df_nuevos.loc[:, ~df_nuevos.columns.duplicated()].copy()
-
-        df_asistencia = pd.concat([df_asistencia, df_nuevos], ignore_index=True)
+    if nombres_docentes:
+        for i, nombre_docente in enumerate(nombres_docentes):
+            hora_entrada_adjusted = (datetime.datetime.combine(datetime.date.today(), hora_entrada) + datetime.timedelta(minutes=i)).time()
+            nuevo_registro = pd.DataFrame([[len(df_asistencia)+1, nombre_docente, str(hora_entrada_adjusted), "", str(hora_salida), ""]], columns=columnas)
+            df_asistencia = pd.concat([df_asistencia, nuevo_registro], ignore_index=True)
         df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
-
         st.success("Asistencia registrada correctamente")
     else:
         st.warning("Debe seleccionar al menos un docente.")
 
-# Mostrar tabla de asistencia
+# Mostrar tabla de asistencia solo si hay registros
 st.subheader("Lista de Asistencia del día")
 if not df_asistencia.empty:
     st.dataframe(df_asistencia)
@@ -145,4 +146,3 @@ if st.button("Generar Lista de Asistencia para Firma"):
     docx_path = generar_docx()
     with open(docx_path, "rb") as f:
         st.download_button("Descargar Lista de Asistencia en Word", f, file_name="Lista_Asistencia.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-
