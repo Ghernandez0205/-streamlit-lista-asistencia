@@ -9,11 +9,9 @@ from docx import Document
 # Configuración de la contraseña
 PASSWORD = "defvm11"
 
-# Estado de autenticación
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# Página de inicio de sesión
 if not st.session_state.authenticated:
     st.title("Sistema de Registro de Asistencia")
     password_input = st.text_input("Ingrese la contraseña:", type="password")
@@ -29,10 +27,11 @@ if not st.session_state.authenticated:
 ONEDRIVE_PATH = r"C:\\Users\\sup11\\OneDrive\\Attachments\\Documentos\\Interfaces de phyton\\Lista de asistencia"
 DB_PATH = os.path.join(ONEDRIVE_PATH, "asistencia.db")
 DOCX_PATH = os.path.join(ONEDRIVE_PATH, "lista.docx")
+
 if not os.path.exists(ONEDRIVE_PATH):
     os.makedirs(ONEDRIVE_PATH)
 
-# Conectar con SQLite y verificar la existencia de la base de datos
+# Conectar con SQLite
 def conectar_db():
     if not os.path.exists(DB_PATH):
         st.error(f"La base de datos no existe en la ruta: {DB_PATH}")
@@ -78,6 +77,7 @@ def obtener_docentes():
 st.title("Registro de Actividad")
 actividad = st.text_input("Ingrese el nombre de la actividad:")
 fecha_actividad = st.date_input("Seleccione la fecha de la actividad:")
+
 if not actividad or not fecha_actividad:
     st.warning("Debe ingresar la actividad y la fecha antes de continuar.")
     st.stop()
@@ -85,7 +85,7 @@ if not actividad or not fecha_actividad:
 # Archivo de asistencia
 nombre_archivo = f"Asistencia_{actividad}_{fecha_actividad}.xlsx"
 archivo_ruta = os.path.join(ONEDRIVE_PATH, nombre_archivo)
-columnas = ["No.", "Nombre Completo", "Hora de Entrada", "Firma", "Hora de Salida", "Firma"]
+columnas = ["No.", "Nombre Completo", "Hora de Entrada", "Firma Entrada", "Hora de Salida", "Firma Salida"]
 
 # Verificar si el archivo Excel existe
 if os.path.exists(archivo_ruta):
@@ -115,7 +115,7 @@ if st.button("Registrar Asistencia"):
     else:
         st.warning("Debe seleccionar al menos un docente.")
 
-# Mostrar tabla de asistencia solo si hay registros
+# Mostrar tabla de asistencia
 st.subheader("Lista de Asistencia del día")
 if not df_asistencia.empty:
     st.dataframe(df_asistencia)
