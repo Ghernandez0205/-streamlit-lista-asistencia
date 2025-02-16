@@ -25,25 +25,24 @@ if not st.session_state.authenticated:
             st.error("Contraseña incorrecta")
     st.stop()
 
-# 📂 Definir rutas de almacenamiento
+# 📂 Configuración de Rutas
 ONEDRIVE_PATH = os.path.expanduser("~/OneDrive/Attachments/Documentos/Interfaces de phyton/Lista de asistencia")
-DB_PATH = os.path.join(ONEDRIVE_PATH, "asistencia.db")
-DOCX_PATH = os.path.join(ONEDRIVE_PATH, "lista.docx")
+LOCAL_DB_PATH = os.path.join(ONEDRIVE_PATH, "asistencia.db")
 
-# Asegurar que la carpeta de almacenamiento existe
+# Asegurar que la carpeta de almacenamiento exista
 if not os.path.exists(ONEDRIVE_PATH):
     os.makedirs(ONEDRIVE_PATH)
 
-# 📌 **Conectar con SQLite y verificar la existencia de la base de datos**
+# 📌 **Conectar con SQLite y manejar errores de base de datos**
 def conectar_db():
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(LOCAL_DB_PATH)
         return conn
     except sqlite3.Error as e:
         st.error(f"Error al conectar con la base de datos: {e}")
         st.stop()
 
-# 📌 **Crear tabla si no existe**
+# 📌 **Crear la tabla si no existe**
 def verificar_tabla():
     conn = conectar_db()
     cursor = conn.cursor()
@@ -82,12 +81,12 @@ if not actividad or not fecha_actividad:
     st.warning("Debe ingresar la actividad y la fecha antes de continuar.")
     st.stop()
 
-# 📂 **Manejo del archivo de asistencia**
+# 📂 **Archivo de Asistencia**
 nombre_archivo = f"Asistencia_{actividad}_{fecha_actividad}.xlsx"
 archivo_ruta = os.path.join(ONEDRIVE_PATH, nombre_archivo)
 columnas = ["No.", "Nombre Completo", "Hora de Entrada", "Firma", "Hora de Salida", "Firma"]
 
-# 📂 **Cargar el archivo de asistencia**
+# 📂 **Carga del archivo de asistencia**
 if os.path.exists(archivo_ruta):
     try:
         df_asistencia = pd.read_excel(archivo_ruta, engine='openpyxl')
@@ -134,8 +133,8 @@ def generar_docx():
         for i, valor in enumerate(row):
             fila[i].text = str(valor)
     doc.add_paragraph("\nATENTAMENTE\nDOCTOR\nGUZMAN HERNANDEZ ESTRADA\nINSPECTOR DE LA SUPERVISIÓN 11")
-    doc.save(DOCX_PATH)
-    return DOCX_PATH
+    doc.save(os.path.join(ONEDRIVE_PATH, "Lista_Asistencia.docx"))
+    return os.path.join(ONEDRIVE_PATH, "Lista_Asistencia.docx")
 
 # 📌 **Botón para generar documento en Word**
 if st.button("Generar Lista de Asistencia para Firma"):
