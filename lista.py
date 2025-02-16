@@ -32,7 +32,7 @@ DOCX_PATH = os.path.join(ONEDRIVE_PATH, "lista.docx")
 if not os.path.exists(ONEDRIVE_PATH):
     os.makedirs(ONEDRIVE_PATH)
 
-# Conectar con SQLite
+# Conectar con SQLite y verificar la existencia de la base de datos
 def conectar_db():
     if not os.path.exists(DB_PATH):
         st.error(f"La base de datos no existe en la ruta: {DB_PATH}")
@@ -74,6 +74,13 @@ columnas = ["No.", "Nombre Completo", "Hora de Entrada", "Firma", "Hora de Salid
 if os.path.exists(archivo_ruta):
     try:
         df_asistencia = pd.read_excel(archivo_ruta, engine='openpyxl')
+        
+        # **🛠 Eliminar columnas duplicadas antes de concatenar**
+        df_asistencia = df_asistencia.loc[:, ~df_asistencia.columns.duplicated()].copy()
+
+        # **🛠 Verificar que el índice no tenga valores repetidos**
+        df_asistencia = df_asistencia.reset_index(drop=True)
+
     except Exception as e:
         st.error(f"Error al leer el archivo de asistencia: {e}")
         df_asistencia = pd.DataFrame(columns=columnas)
@@ -97,8 +104,8 @@ if st.button("Registrar Asistencia"):
 
         df_nuevos = pd.DataFrame(registros, columns=columnas)
 
-        # **Corrección de error de columnas duplicadas**
-        df_asistencia = df_asistencia.loc[:, ~df_asistencia.columns.duplicated()].copy()
+        # **🔧 Validar que las columnas son correctas**
+        df_nuevos = df_nuevos.loc[:, ~df_nuevos.columns.duplicated()].copy()
 
         df_asistencia = pd.concat([df_asistencia, df_nuevos], ignore_index=True)
         df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
@@ -138,3 +145,4 @@ if st.button("Generar Lista de Asistencia para Firma"):
     docx_path = generar_docx()
     with open(docx_path, "rb") as f:
         st.download_button("Descargar Lista de Asistencia en Word", f, file_name="Lista_Asistencia.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
