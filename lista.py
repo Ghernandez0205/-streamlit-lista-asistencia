@@ -32,7 +32,7 @@ DOCX_PATH = os.path.join(ONEDRIVE_PATH, "lista.docx")
 if not os.path.exists(ONEDRIVE_PATH):
     os.makedirs(ONEDRIVE_PATH)
 
-# Conectar con SQLite y verificar la existencia de la base de datos
+# Conectar con SQLite
 def conectar_db():
     if not os.path.exists(DB_PATH):
         st.error(f"La base de datos no existe en la ruta: {DB_PATH}")
@@ -44,25 +44,8 @@ def conectar_db():
         st.error(f"Error al conectar con la base de datos: {e}")
         st.stop()
 
-# Verificar y crear la tabla docentes si no existe
-def verificar_tabla():
-    conn = conectar_db()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS docentes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            apellido_paterno TEXT NOT NULL,
-            apellido_materno TEXT NOT NULL,
-            nombre TEXT NOT NULL,
-            activo INTEGER DEFAULT 1
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
 # Obtener lista de docentes
 def obtener_docentes():
-    verificar_tabla()
     try:
         conn = conectar_db()
         cursor = conn.cursor()
@@ -102,21 +85,29 @@ st.title("Registro de Asistencia")
 docentes = obtener_docentes()
 docentes_seleccionados = st.multiselect("Seleccione los Docentes:", docentes)
 
-hora_entrada = st.time_input("Hora de Entrada:")
+hora_entrada_base = st.time_input("Hora de Entrada:")
 hora_salida = st.time_input("Hora de Salida:")
 
 if st.button("Registrar Asistencia"):
     if docentes_seleccionados:
-        for i, nombre_docente in enumerate(docentes_seleccionados):
-            hora_entrada_desplazada = (datetime.datetime.combine(datetime.date.today(), hora_entrada) + datetime.timedelta(minutes=i)).time()
-            nuevo_registro = pd.DataFrame([[len(df_asistencia)+1, nombre_docente, str(hora_entrada_desplazada), "", str(hora_salida), ""]], columns=columnas)
-            df_asistencia = pd.concat([df_asistencia, nuevo_registro], ignore_index=True)
+        registros = []
+        for i, docente in enumerate(docentes_seleccionados):
+            hora_entrada = (datetime.datetime.combine(datetime.date.today(), hora_entrada_base) + datetime.timedelta(minutes=i)).time()
+            registros.append([len(df_asistencia) + 1 + i, docente, str(hora_entrada), "", str(hora_salida), ""])
+
+        df_nuevos = pd.DataFrame(registros, columns=columnas)
+
+        # **Corrección de error de columnas duplicadas**
+        df_asistencia = df_asistencia.loc[:, ~df_asistencia.columns.duplicated()].copy()
+
+        df_asistencia = pd.concat([df_asistencia, df_nuevos], ignore_index=True)
         df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
+
         st.success("Asistencia registrada correctamente")
     else:
         st.warning("Debe seleccionar al menos un docente.")
 
-# Mostrar tabla de asistencia solo si hay registros
+# Mostrar tabla de asistencia
 st.subheader("Lista de Asistencia del día")
 if not df_asistencia.empty:
     st.dataframe(df_asistencia)
