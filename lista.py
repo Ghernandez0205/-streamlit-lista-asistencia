@@ -87,8 +87,13 @@ nombre_archivo = f"Asistencia_{actividad}_{fecha_actividad}.xlsx"
 archivo_ruta = os.path.join(ONEDRIVE_PATH, nombre_archivo)
 columnas = ["No.", "Nombre Completo", "Hora de Entrada", "Firma", "Hora de Salida", "Firma"]
 
+# Verificar si el archivo Excel existe
 if os.path.exists(archivo_ruta):
-    df_asistencia = pd.read_excel(archivo_ruta, engine='openpyxl')
+    try:
+        df_asistencia = pd.read_excel(archivo_ruta, engine='openpyxl')
+    except Exception as e:
+        st.error(f"Error al leer el archivo de asistencia: {e}")
+        df_asistencia = pd.DataFrame(columns=columnas)
 else:
     df_asistencia = pd.DataFrame(columns=columnas)
 
@@ -101,16 +106,19 @@ hora_salida = st.time_input("Hora de Salida:")
 
 if st.button("Registrar Asistencia"):
     if nombre_docente != "Seleccionar...":
-        nuevo_registro = pd.DataFrame([[len(df_asistencia)+1, nombre_docente, hora_entrada, "", hora_salida, ""]], columns=columnas)
+        nuevo_registro = pd.DataFrame([[len(df_asistencia)+1, nombre_docente, str(hora_entrada), "", str(hora_salida), ""]], columns=columnas)
         df_asistencia = pd.concat([df_asistencia, nuevo_registro], ignore_index=True)
         df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
         st.success("Asistencia registrada correctamente")
     else:
         st.warning("Debe seleccionar un docente.")
 
-# Mostrar tabla de asistencia
+# Mostrar tabla de asistencia solo si hay registros
 st.subheader("Lista de Asistencia del día")
-st.dataframe(df_asistencia)
+if not df_asistencia.empty:
+    st.dataframe(df_asistencia)
+else:
+    st.warning("No hay registros de asistencia disponibles.")
 
 # Generar documento en Word
 def generar_docx():
