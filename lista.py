@@ -101,20 +101,16 @@ else:
 st.title("Registro de Asistencia")
 docentes = obtener_docentes()
 docentes_seleccionados = st.multiselect("Seleccione los Docentes:", docentes)
+
 hora_entrada = st.time_input("Hora de Entrada:")
 hora_salida = st.time_input("Hora de Salida:")
 
 if st.button("Registrar Asistencia"):
     if docentes_seleccionados:
-        nuevos_registros = []
-        for nombre_docente in docentes_seleccionados:
-            nuevos_registros.append([len(df_asistencia) + 1, nombre_docente, str(hora_entrada), "", str(hora_salida), ""])
-        
-        # Convertir lista en DataFrame y concatenar
-        df_nuevos = pd.DataFrame(nuevos_registros, columns=columnas)
-        df_asistencia = pd.concat([df_asistencia, df_nuevos], ignore_index=True)
-
-        # Guardar en Excel
+        for i, nombre_docente in enumerate(docentes_seleccionados):
+            hora_entrada_desplazada = (datetime.datetime.combine(datetime.date.today(), hora_entrada) + datetime.timedelta(minutes=i)).time()
+            nuevo_registro = pd.DataFrame([[len(df_asistencia)+1, nombre_docente, str(hora_entrada_desplazada), "", str(hora_salida), ""]], columns=columnas)
+            df_asistencia = pd.concat([df_asistencia, nuevo_registro], ignore_index=True)
         df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
         st.success("Asistencia registrada correctamente")
     else:
@@ -134,17 +130,12 @@ def generar_docx():
     doc.add_paragraph(f"Lista de asistencia: {actividad}")
     doc.add_paragraph(f"Fecha: {fecha_actividad}")
     tabla = doc.add_table(rows=1, cols=len(columnas))
-    
-    # Agregar encabezados
     for i, columna in enumerate(columnas):
         tabla.cell(0, i).text = columna
-
-    # Agregar registros
     for index, row in df_asistencia.iterrows():
         fila = tabla.add_row().cells
         for i, valor in enumerate(row):
             fila[i].text = str(valor)
-
     doc.add_paragraph("\nATENTAMENTE\nDOCTOR\nGUZMAN HERNANDEZ ESTRADA\nINSPECTOR DE LA SUPERVISIÓN 11")
     doc.save(DOCX_PATH)
     return DOCX_PATH
