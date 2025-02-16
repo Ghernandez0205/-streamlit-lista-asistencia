@@ -32,19 +32,47 @@ DOCX_PATH = os.path.join(ONEDRIVE_PATH, "lista.docx")
 if not os.path.exists(ONEDRIVE_PATH):
     os.makedirs(ONEDRIVE_PATH)
 
-# Conectar con SQLite
+# Conectar con SQLite y verificar la existencia de la base de datos
 def conectar_db():
-    conn = sqlite3.connect(DB_PATH)
-    return conn
+    if not os.path.exists(DB_PATH):
+        st.error(f"La base de datos no existe en la ruta: {DB_PATH}")
+        st.stop()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        return conn
+    except sqlite3.Error as e:
+        st.error(f"Error al conectar con la base de datos: {e}")
+        st.stop()
+
+# Verificar y crear la tabla docentes si no existe
+def verificar_tabla():
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS docentes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            apellido_paterno TEXT NOT NULL,
+            apellido_materno TEXT NOT NULL,
+            nombre TEXT NOT NULL,
+            activo INTEGER DEFAULT 1
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
 # Obtener lista de docentes
 def obtener_docentes():
-    conn = conectar_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, apellido_paterno, apellido_materno, nombre FROM docentes WHERE activo = 1")
-    docentes = cursor.fetchall()
-    conn.close()
-    return [f"{d[1]} {d[2]} {d[3]}" for d in docentes]
+    verificar_tabla()
+    try:
+        conn = conectar_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, apellido_paterno, apellido_materno, nombre FROM docentes WHERE activo = 1")
+        docentes = cursor.fetchall()
+        conn.close()
+        return [f"{d[1]} {d[2]} {d[3]}" for d in docentes]
+    except sqlite3.OperationalError:
+        st.error("Error al leer la tabla 'docentes'. Verifique que la base de datos esté correctamente configurada.")
+        return []
 
 # Registro de actividad y fecha
 st.title("Registro de Actividad")
