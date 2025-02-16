@@ -25,18 +25,17 @@ if not st.session_state.authenticated:
             st.error("Contraseña incorrecta")
     st.stop()
 
-# Directorios de almacenamiento
-ONEDRIVE_PATH = r"C:\\Users\\sup11\\OneDrive\\Attachments\\Documentos\\Interfaces de phyton\\Lista de asistencia"
+# 📂 Definir rutas de almacenamiento
+ONEDRIVE_PATH = os.path.expanduser("~/OneDrive/Attachments/Documentos/Interfaces de phyton/Lista de asistencia")
 DB_PATH = os.path.join(ONEDRIVE_PATH, "asistencia.db")
 DOCX_PATH = os.path.join(ONEDRIVE_PATH, "lista.docx")
+
+# Asegurar que la carpeta de almacenamiento existe
 if not os.path.exists(ONEDRIVE_PATH):
     os.makedirs(ONEDRIVE_PATH)
 
-# Conectar con SQLite y verificar la existencia de la base de datos
+# 📌 **Conectar con SQLite y verificar la existencia de la base de datos**
 def conectar_db():
-    if not os.path.exists(DB_PATH):
-        st.error(f"La base de datos no existe en la ruta: {DB_PATH}")
-        st.stop()
     try:
         conn = sqlite3.connect(DB_PATH)
         return conn
@@ -44,7 +43,7 @@ def conectar_db():
         st.error(f"Error al conectar con la base de datos: {e}")
         st.stop()
 
-# Verificar y crear la tabla docentes si no existe
+# 📌 **Crear tabla si no existe**
 def verificar_tabla():
     conn = conectar_db()
     cursor = conn.cursor()
@@ -60,7 +59,7 @@ def verificar_tabla():
     conn.commit()
     conn.close()
 
-# Obtener lista de docentes
+# 📌 **Obtener la lista de docentes**
 def obtener_docentes():
     verificar_tabla()
     try:
@@ -70,24 +69,25 @@ def obtener_docentes():
         docentes = cursor.fetchall()
         conn.close()
         return [f"{d[1]} {d[2]} {d[3]}" for d in docentes]
-    except sqlite3.OperationalError:
-        st.error("Error al leer la tabla 'docentes'. Verifique que la base de datos esté correctamente configurada.")
+    except sqlite3.OperationalError as e:
+        st.error(f"Error al leer la tabla 'docentes': {e}")
         return []
 
-# Registro de actividad y fecha
+# 📌 **Registro de actividad**
 st.title("Registro de Actividad")
 actividad = st.text_input("Ingrese el nombre de la actividad:")
 fecha_actividad = st.date_input("Seleccione la fecha de la actividad:")
+
 if not actividad or not fecha_actividad:
     st.warning("Debe ingresar la actividad y la fecha antes de continuar.")
     st.stop()
 
-# Archivo de asistencia
+# 📂 **Manejo del archivo de asistencia**
 nombre_archivo = f"Asistencia_{actividad}_{fecha_actividad}.xlsx"
 archivo_ruta = os.path.join(ONEDRIVE_PATH, nombre_archivo)
 columnas = ["No.", "Nombre Completo", "Hora de Entrada", "Firma", "Hora de Salida", "Firma"]
 
-# Verificar si el archivo Excel existe
+# 📂 **Cargar el archivo de asistencia**
 if os.path.exists(archivo_ruta):
     try:
         df_asistencia = pd.read_excel(archivo_ruta, engine='openpyxl')
@@ -97,7 +97,7 @@ if os.path.exists(archivo_ruta):
 else:
     df_asistencia = pd.DataFrame(columns=columnas)
 
-# Formulario de registro de asistencia
+# 📌 **Formulario de Registro**
 st.title("Registro de Asistencia")
 docentes = obtener_docentes()
 nombre_docente = st.selectbox("Seleccione el Docente:", ["Seleccionar..."] + docentes)
@@ -113,14 +113,14 @@ if st.button("Registrar Asistencia"):
     else:
         st.warning("Debe seleccionar un docente.")
 
-# Mostrar tabla de asistencia solo si hay registros
+# 📌 **Mostrar la tabla de asistencia**
 st.subheader("Lista de Asistencia del día")
 if not df_asistencia.empty:
     st.dataframe(df_asistencia)
 else:
     st.warning("No hay registros de asistencia disponibles.")
 
-# Generar documento en Word
+# 📌 **Generar documento en Word**
 def generar_docx():
     doc = Document()
     doc.add_paragraph("Servicios Educativos Integrados Al Estado de México\nSupervisión 11 de Educación Física Valle de México")
@@ -137,7 +137,7 @@ def generar_docx():
     doc.save(DOCX_PATH)
     return DOCX_PATH
 
-# Botón para generar documento Word
+# 📌 **Botón para generar documento en Word**
 if st.button("Generar Lista de Asistencia para Firma"):
     df_asistencia.to_excel(archivo_ruta, index=False, engine='openpyxl')
     st.success(f"Lista de asistencia guardada en: {archivo_ruta}")
