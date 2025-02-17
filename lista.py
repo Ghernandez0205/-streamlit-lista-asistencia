@@ -3,97 +3,97 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 
-# 📌 Ruta de la base de datos en OneDrive
-db_path = "C:/Users/sup11/OneDrive/Attachments/Documentos/Interfaces de phyton/Lista de asistencia/asistencia.db"
-
-# 🔐 Contraseña requerida para acceder a la aplicación
+# Configuración de contraseña
 PASSWORD = "supervision11"
 
-# ✅ Función para verificar autenticación
-def verificar_contraseña():
-    if "autenticado" not in st.session_state:
-        st.session_state.autenticado = False
+# Conexión a la base de datos SQLite
+DB_PATH = "C:/Users/sup11/OneDrive/Attachments/Documentos/Interfaces de phyton/Lista de asistencia/asistencia.db"
 
-    if not st.session_state.autenticado:
-        contraseña_ingresada = st.text_input("Ingrese la contraseña:", type="password")
-        if st.button("Acceder"):
-            if contraseña_ingresada == PASSWORD:
-                st.session_state.autenticado = True
-                st.experimental_rerun()
-            else:
-                st.error("Contraseña incorrecta.")
+def crear_tabla():
+    """ Crea la tabla de asistencia si no existe """
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS asistencia (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            fecha TEXT NOT NULL,
+            hora_entrada TEXT NOT NULL,
+            hora_salida TEXT NOT NULL,
+            actividad TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-# 📌 Función para obtener docentes activos desde la base de datos
 def obtener_docentes():
+    """ Obtiene la lista de docentes activos desde la base de datos """
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT nombre FROM docentes WHERE activo = 1")
+    docentes = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return docentes
+
+def registrar_asistencia(nombre, fecha, hora_entrada, hora_salida, actividad):
+    """ Registra la asistencia en la base de datos """
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("SELECT id, apellido_paterno, apellido_materno, nombre FROM docentes WHERE activo = 1")
-        docentes = cursor.fetchall()
-        conn.close()
-        return [(f"{doc[1]} {doc[2]} {doc[3]}", doc[0]) for doc in docentes]  # Nombre completo y ID
-    except Exception as e:
-        st.error(f"Error al obtener docentes: {e}")
-        return []
-
-# 📌 Función para registrar asistencia en la base de datos
-def registrar_asistencia(docente_id, nombre, fecha, hora_entrada, hora_salida, actividad):
-    try:
-        if not nombre or nombre.strip() == "":
-            st.error("Debe seleccionar un docente antes de registrar la asistencia.")
-            return
-
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        query = """INSERT INTO asistencia (docente_id, nombre, fecha, hora_entrada, hora_salida, actividad) 
-                   VALUES (?, ?, ?, ?, ?, ?)"""
-        cursor.execute(query, (docente_id, nombre, fecha, hora_entrada, hora_salida, actividad))
+        cursor.execute("""
+            INSERT INTO asistencia (nombre, fecha, hora_entrada, hora_salida, actividad) 
+            VALUES (?, ?, ?, ?, ?)
+        """, (nombre, fecha, hora_entrada, hora_salida, actividad))
         conn.commit()
         conn.close()
-
-        st.success(f"Asistencia registrada correctamente para {nombre}")
-
-    except Exception as e:
+        st.success("Registro guardado exitosamente.")
+    except sqlite3.Error as e:
         st.error(f"Error al registrar la asistencia: {e}")
 
-# 🔑 Verificar autenticación antes de mostrar la interfaz
-verificar_contraseña()
+# Verificación de contraseña
+def verificar_contraseña():
+    st.title("Inicio de Sesión")
+    contraseña_ingresada = st.text_input("Ingrese la contraseña:", type="password")
+    if st.button("Acceder"):
+        if contraseña_ingresada == PASSWORD:
+            st.session_state["autenticado"] = True
+            st.rerun()
+        else:
+            st.error("Contraseña incorrecta.")
 
-# 🚀 Solo mostrar la interfaz si el usuario está autenticado
-if st.session_state.autenticado:
+# Interfaz de Registro
+def interfaz_registro():
     st.title("Registro de Asistencia")
 
-    # 📌 Captura de actividad y fecha
-    actividad = st.text_input("Ingrese el nombre de la actividad:", "")
+    actividad = st.text_input("Ingrese el nombre de la actividad:")
     fecha = st.date_input("Seleccione la fecha de la actividad:", datetime.today())
-
-    # 📌 Selección de docente
+    
     docentes = obtener_docentes()
-    if docentes:
-        docente_seleccionado = st.selectbox("Seleccione el Docente:", [d[0] for d in docentes])
-        docente_id = next((d[1] for d in docentes if d[0] == docente_seleccionado), None)
-    else:
-        st.error("No hay docentes disponibles.")
-        docente_id = None
+    if not docentes:
+        st.warning("No hay docentes disponibles.")
+        return
+    
+    seleccionados = st.multiselect("Seleccione los docentes", docentes)
+    
+    hora_entrada = st.time_input("Hora de Entrada")
+    hora_salida = st.time_input("Hora de Salida")
 
-    # 📌 Selección de horario
-    hora_entrada = st.time_input("Hora de Entrada:", value=datetime.now().time())
-    hora_salida = st.time_input("Hora de Salida:", value=datetime.now().time())
-
-    # 📌 Botón para registrar asistencia
     if st.button("Registrar Asistencia"):
-        if docente_id:
-            registrar_asistencia(docente_id, docente_seleccionado, fecha, hora_entrada, hora_salida, actividad)
+        if not seleccionados:
+            st.warning("Seleccione al menos un docente.")
         else:
-            st.error("Seleccione un docente antes de continuar.")
+            for docente in seleccionados:
+                registrar_asistencia(docente, fecha, hora_entrada, hora_salida, actividad)
+            st.success("Asistencia registrada correctamente.")
 
-    # 📌 Mostrar lista de asistencia del día
-    st.subheader("Lista de Asistencia del día")
-    try:
-        conn = sqlite3.connect(db_path)
-        df_asistencia = pd.read_sql_query("SELECT nombre, fecha, hora_entrada, hora_salida, actividad FROM asistencia WHERE fecha = ?", conn, params=(fecha,))
-        conn.close()
-        st.dataframe(df_asistencia)
-    except Exception as e:
-        st.error(f"Error al cargar la lista de asistencia: {e}")
+# Ejecutar la app
+crear_tabla()
+
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = False
+
+if not st.session_state["autenticado"]:
+    verificar_contraseña()
+else:
+    interfaz_registro()
+
