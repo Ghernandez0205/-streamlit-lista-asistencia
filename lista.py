@@ -9,8 +9,22 @@ DB_PATH = "C:/Users/sup11/OneDrive/Attachments/Documentos/Interfaces de phyton/L
 EXCEL_PATH = "C:/Users/sup11/OneDrive/Attachments/Documentos/Interfaces de phyton/Lista de asistencia/asistencia.xlsx"
 
 # Conexión a la base de datos SQLite
-conn = sqlite3.connect(DB_PATH)
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
+
+# Crear tabla si no existe
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS asistencia (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    hora_entrada TEXT NOT NULL,
+    firma_entrada TEXT DEFAULT 'Pendiente',
+    hora_salida TEXT NOT NULL,
+    firma_salida TEXT DEFAULT 'Pendiente',
+    fecha TEXT NOT NULL
+)
+""")
+conn.commit()
 
 # Función para verificar la contraseña
 def verificar_contraseña(contraseña_ingresada):
@@ -35,53 +49,40 @@ fecha = st.date_input("📅 Fecha de asistencia", datetime.today())
 hora_entrada = st.time_input("⏰ Hora de Entrada").strftime("%H:%M:%S")
 hora_salida = st.time_input("⏳ Hora de Salida").strftime("%H:%M:%S")
 
-actividad = st.text_input("📌 Actividad")
-
 # Función para registrar asistencia
-def registrar_asistencia(nombre, fecha, hora_entrada, hora_salida, actividad):
+def registrar_asistencia(nombre, fecha, hora_entrada, hora_salida):
     try:
         cursor.execute(
-            "INSERT INTO asistencia (nombre, fecha, hora_entrada, hora_salida, actividad) VALUES (?, ?, ?, ?, ?)",
-            (nombre, fecha, hora_entrada, hora_salida, actividad),
+            "INSERT INTO asistencia (nombre, hora_entrada, hora_salida, fecha) VALUES (?, ?, ?, ?)",
+            (nombre, hora_entrada, hora_salida, fecha),
         )
         conn.commit()
         
         # Guardar en Excel
-        guardar_en_excel(nombre, fecha, hora_entrada, hora_salida, actividad)
+        guardar_en_excel()
         
         st.success("✅ Asistencia registrada correctamente.")
     except Exception as e:
         st.error(f"❌ Error al registrar la asistencia: {e}")
 
 # Función para guardar en Excel
-def guardar_en_excel(nombre, fecha, hora_entrada, hora_salida, actividad):
-    # Verificar si el archivo ya existe
-    if os.path.exists(EXCEL_PATH):
-        df = pd.read_excel(EXCEL_PATH)
-    else:
-        df = pd.DataFrame(columns=["Nombre", "Fecha", "Hora Entrada", "Hora Salida", "Actividad"])
-
-    # Crear un nuevo registro
-    nuevo_registro = pd.DataFrame([[nombre, fecha, hora_entrada, hora_salida, actividad]],
-                                  columns=["Nombre", "Fecha", "Hora Entrada", "Hora Salida", "Actividad"])
-
-    # Agregar el nuevo registro al DataFrame
-    df = pd.concat([df, nuevo_registro], ignore_index=True)
-
+def guardar_en_excel():
+    df = pd.read_sql_query("SELECT id AS 'No.', nombre AS 'Nombre del Docente', hora_entrada AS 'Hora de Entrada', firma_entrada AS 'Firma Entrada', hora_salida AS 'Hora de Salida', firma_salida AS 'Firma Salida', fecha FROM asistencia", conn)
+    
     # Guardar en Excel
     df.to_excel(EXCEL_PATH, index=False)
     st.success("✅ Registro guardado en Excel en OneDrive.")
 
 # Botón para registrar asistencia
 if st.button("Registrar Asistencia"):
-    if nombre and actividad:
-        registrar_asistencia(nombre, fecha, hora_entrada, hora_salida, actividad)
+    if nombre:
+        registrar_asistencia(nombre, fecha, hora_entrada, hora_salida)
     else:
         st.error("❌ Debe completar todos los campos antes de registrar la asistencia.")
 
 # Mostrar registros en la interfaz
 st.header("📄 Registros de Asistencia")
-df_asistencia = pd.read_sql_query("SELECT * FROM asistencia", conn)
+df_asistencia = pd.read_sql_query("SELECT id AS 'No.', nombre AS 'Nombre del Docente', hora_entrada AS 'Hora de Entrada', firma_entrada AS 'Firma Entrada', hora_salida AS 'Hora de Salida', firma_salida AS 'Firma Salida', fecha FROM asistencia", conn)
 st.dataframe(df_asistencia)
 
 # Cerrar la conexión
