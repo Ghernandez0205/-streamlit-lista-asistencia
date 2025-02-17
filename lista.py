@@ -8,6 +8,8 @@ PASSWORD = "defvm11"
 
 # Ruta de la base de datos SQLite
 DB_PATH = r"C:\Users\sup11\OneDrive\Attachments\Documentos\Interfaces de phyton\Lista de asistencia\asistencia.db"
+EXCEL_PATH = r"C:\Users\sup11\OneDrive\Attachments\Documentos\Interfaces de phyton\Lista de asistencia\Historial_Asistencia.xlsx"
+EXCEL_FOLDER = r"C:\Users\sup11\OneDrive\Attachments\Documentos\Interfaces de phyton\Lista de asistencia\Listas de asistencia"
 
 # Función para crear la base de datos si no existe
 def inicializar_bd():
@@ -66,11 +68,33 @@ def registrar_asistencia(docentes, fecha, hora_entrada, hora_salida, actividad):
             """, (docente, fecha, entrada_escalonada, hora_salida, actividad))
 
         conn.commit()
+        generar_excel_asistencia()
+        generar_excel_por_actividad(actividad, fecha)
         st.success("Asistencia registrada correctamente.")
     except Exception as e:
         st.error(f"Error al registrar la asistencia: {e}")
     finally:
         conn.close()
+
+# Función para generar un historial de asistencia en Excel
+def generar_excel_asistencia():
+    conn = sqlite3.connect(DB_PATH)
+    df_asistencia = pd.read_sql_query("SELECT * FROM asistencia", conn)
+    conn.close()
+    df_asistencia.to_excel(EXCEL_PATH, index=False)
+    st.success(f"Historial de asistencia guardado en {EXCEL_PATH}")
+
+# Función para generar un Excel por actividad
+def generar_excel_por_actividad(actividad, fecha):
+    conn = sqlite3.connect(DB_PATH)
+    df_actividad = pd.read_sql_query(f"SELECT * FROM asistencia WHERE actividad='{actividad}' AND fecha='{fecha}'", conn)
+    conn.close()
+    
+    if not df_actividad.empty:
+        nombre_archivo = f"{actividad.replace(' ', '_')}_{fecha}.xlsx"
+        ruta_archivo = f"{EXCEL_FOLDER}/{nombre_archivo}"
+        df_actividad.to_excel(ruta_archivo, index=False)
+        st.success(f"Lista de asistencia guardada en {ruta_archivo}")
 
 # Verificación de contraseña
 def verificar_contraseña():
@@ -79,7 +103,7 @@ def verificar_contraseña():
     if st.button("Acceder"):
         if password_input == PASSWORD:
             st.session_state["acceso"] = True
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Contraseña incorrecta.")
 
