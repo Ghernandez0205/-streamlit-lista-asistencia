@@ -6,40 +6,24 @@ from datetime import datetime, timedelta
 # Configuración de la contraseña
 PASSWORD = "defvm11"
 
-# Ruta de la base de datos SQLite
+# Rutas
 DB_PATH = r"C:\Users\sup11\OneDrive\Attachments\Documentos\Interfaces de phyton\Lista de asistencia\asistencia.db"
 EXCEL_PATH = r"C:\Users\sup11\OneDrive\Attachments\Documentos\Interfaces de phyton\Lista de asistencia\Historial_Asistencia.xlsx"
 EXCEL_FOLDER = r"C:\Users\sup11\OneDrive\Attachments\Documentos\Interfaces de phyton\Lista de asistencia\Listas de asistencia"
 
-# Función para crear la base de datos si no existe
-def inicializar_bd():
+# Función para actualizar la estructura de la BD
+def actualizar_bd():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Crear tabla de docentes si no existe
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS docentes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            apellido_paterno TEXT NOT NULL,
-            apellido_materno TEXT NOT NULL,
-            nombre TEXT NOT NULL,
-            activo INTEGER DEFAULT 1
-        )
-    """)
-
-    # Crear tabla de asistencia con columnas adicionales
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS asistencia (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL,
-            fecha TEXT NOT NULL,
-            hora_entrada TEXT NOT NULL,
-            firma_entrada TEXT DEFAULT '',
-            hora_salida TEXT NOT NULL,
-            firma_salida TEXT DEFAULT '',
-            actividad TEXT NOT NULL
-        )
-    """)
+    # Verificar si existen las columnas firma_entrada y firma_salida
+    cursor.execute("PRAGMA table_info(asistencia);")
+    columnas = [col[1] for col in cursor.fetchall()]
+    
+    if "firma_entrada" not in columnas:
+        cursor.execute("ALTER TABLE asistencia ADD COLUMN firma_entrada TEXT DEFAULT '';")
+    if "firma_salida" not in columnas:
+        cursor.execute("ALTER TABLE asistencia ADD COLUMN firma_salida TEXT DEFAULT '';")
 
     conn.commit()
     conn.close()
@@ -63,9 +47,9 @@ def registrar_asistencia(docentes, fecha, hora_entrada, hora_salida, actividad):
         for i, docente in enumerate(docentes):
             entrada_escalonada = (datetime.strptime(hora_entrada, "%H:%M") + timedelta(minutes=i)).strftime("%H:%M")
             cursor.execute("""
-                INSERT INTO asistencia (nombre, fecha, hora_entrada, hora_salida, actividad) 
-                VALUES (?, ?, ?, ?, ?)
-            """, (docente, fecha, entrada_escalonada, hora_salida, actividad))
+                INSERT INTO asistencia (nombre, fecha, hora_entrada, firma_entrada, hora_salida, firma_salida, actividad) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (docente, fecha, entrada_escalonada, "", hora_salida, "", actividad))
 
         conn.commit()
         generar_excel_asistencia()
@@ -109,7 +93,7 @@ def verificar_contraseña():
 
 # UI de la aplicación
 def main():
-    inicializar_bd()
+    actualizar_bd()
     
     if "acceso" not in st.session_state:
         verificar_contraseña()
