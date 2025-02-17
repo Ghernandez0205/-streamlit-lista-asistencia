@@ -1,43 +1,88 @@
 import sqlite3
 import streamlit as st
+import pandas as pd
+import os
 from datetime import datetime
 
-# Conexión a la base de datos
+# Ruta de la base de datos SQLite y el archivo de Excel en OneDrive
 DB_PATH = "C:/Users/sup11/OneDrive/Attachments/Documentos/Interfaces de phyton/Lista de asistencia/asistencia.db"
+EXCEL_PATH = "C:/Users/sup11/OneDrive/Attachments/Documentos/Interfaces de phyton/Lista de asistencia/asistencia.xlsx"
+
+# Conexión a la base de datos SQLite
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
+
+# Función para verificar la contraseña
+def verificar_contraseña(contraseña_ingresada):
+    return contraseña_ingresada == "defvm11"
+
+# Interfaz de autenticación
+st.title("🔐 Acceso al Registro de Asistencia")
+contraseña = st.text_input("Ingrese la contraseña:", type="password")
+if not verificar_contraseña(contraseña):
+    st.error("❌ Contraseña incorrecta. Intente nuevamente.")
+    st.stop()
+
+st.success("✅ Acceso concedido. Puede registrar asistencia.")
+
+# Interfaz de Registro de Asistencia
+st.header("📌 Registro de Asistencia")
+
+nombre = st.text_input("👨‍🏫 Nombre del docente")
+fecha = st.date_input("📅 Fecha de asistencia", datetime.today())
+
+# Selección de horas con conversión a string
+hora_entrada = st.time_input("⏰ Hora de Entrada").strftime("%H:%M:%S")
+hora_salida = st.time_input("⏳ Hora de Salida").strftime("%H:%M:%S")
+
+actividad = st.text_input("📌 Actividad")
 
 # Función para registrar asistencia
 def registrar_asistencia(nombre, fecha, hora_entrada, hora_salida, actividad):
     try:
-        # Convertir hora a formato string para que SQLite lo acepte
-        hora_entrada_str = hora_entrada.strftime("%H:%M:%S")
-        hora_salida_str = hora_salida.strftime("%H:%M:%S")
-
         cursor.execute(
             "INSERT INTO asistencia (nombre, fecha, hora_entrada, hora_salida, actividad) VALUES (?, ?, ?, ?, ?)",
-            (nombre, fecha, hora_entrada_str, hora_salida_str, actividad),
+            (nombre, fecha, hora_entrada, hora_salida, actividad),
         )
         conn.commit()
-        st.success("Asistencia registrada correctamente.")
+        
+        # Guardar en Excel
+        guardar_en_excel(nombre, fecha, hora_entrada, hora_salida, actividad)
+        
+        st.success("✅ Asistencia registrada correctamente.")
     except Exception as e:
-        st.error(f"Error al registrar la asistencia: {e}")
+        st.error(f"❌ Error al registrar la asistencia: {e}")
 
-# Interfaz en Streamlit
-st.title("Registro de Asistencia")
+# Función para guardar en Excel
+def guardar_en_excel(nombre, fecha, hora_entrada, hora_salida, actividad):
+    # Verificar si el archivo ya existe
+    if os.path.exists(EXCEL_PATH):
+        df = pd.read_excel(EXCEL_PATH)
+    else:
+        df = pd.DataFrame(columns=["Nombre", "Fecha", "Hora Entrada", "Hora Salida", "Actividad"])
 
-nombre = st.text_input("Nombre del docente")
-fecha = st.date_input("Fecha de asistencia", datetime.today())
+    # Crear un nuevo registro
+    nuevo_registro = pd.DataFrame([[nombre, fecha, hora_entrada, hora_salida, actividad]],
+                                  columns=["Nombre", "Fecha", "Hora Entrada", "Hora Salida", "Actividad"])
 
-# Selección de horas convertidas a datetime.time
-hora_entrada = st.time_input("Hora de Entrada")
-hora_salida = st.time_input("Hora de Salida")
+    # Agregar el nuevo registro al DataFrame
+    df = pd.concat([df, nuevo_registro], ignore_index=True)
 
-actividad = st.text_input("Actividad")
+    # Guardar en Excel
+    df.to_excel(EXCEL_PATH, index=False)
+    st.success("✅ Registro guardado en Excel en OneDrive.")
 
+# Botón para registrar asistencia
 if st.button("Registrar Asistencia"):
-    registrar_asistencia(nombre, fecha, hora_entrada, hora_salida, actividad)
+    if nombre and actividad:
+        registrar_asistencia(nombre, fecha, hora_entrada, hora_salida, actividad)
+    else:
+        st.error("❌ Debe completar todos los campos antes de registrar la asistencia.")
 
-# Cerrar la conexión a la base de datos al finalizar
+# Mostrar registros en la interfaz
+st.header("📄 Registros de Asistencia")
+df_asistencia = pd.read_sql_query("SELECT * FROM asistencia", conn)
+st.dataframe(df_asistencia)
+
+# Cerrar la conexión
 conn.close()
-
