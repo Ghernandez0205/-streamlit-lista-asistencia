@@ -12,7 +12,7 @@ EXCEL_PATH = "C:/Users/sup11/OneDrive/Attachments/Documentos/Interfaces de phyto
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
 
-# Crear tabla si no existe
+# Verificar y agregar columnas faltantes en la base de datos
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS asistencia (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS asistencia (
     firma_entrada TEXT DEFAULT 'Pendiente',
     hora_salida TEXT NOT NULL,
     firma_salida TEXT DEFAULT 'Pendiente',
-    fecha TEXT NOT NULL
+    fecha TEXT NOT NULL,
+    actividad TEXT NOT NULL
 )
 """)
 conn.commit()
@@ -45,16 +46,19 @@ st.header("📌 Registro de Asistencia")
 nombre = st.text_input("👨‍🏫 Nombre del docente")
 fecha = st.date_input("📅 Fecha de asistencia", datetime.today())
 
+# Selección de actividad
+actividad = st.text_input("📝 Actividad realizada")
+
 # Selección de horas con conversión a string
 hora_entrada = st.time_input("⏰ Hora de Entrada").strftime("%H:%M:%S")
 hora_salida = st.time_input("⏳ Hora de Salida").strftime("%H:%M:%S")
 
 # Función para registrar asistencia
-def registrar_asistencia(nombre, fecha, hora_entrada, hora_salida):
+def registrar_asistencia(nombre, fecha, hora_entrada, hora_salida, actividad):
     try:
         cursor.execute(
-            "INSERT INTO asistencia (nombre, hora_entrada, hora_salida, fecha) VALUES (?, ?, ?, ?)",
-            (nombre, hora_entrada, hora_salida, fecha),
+            "INSERT INTO asistencia (nombre, hora_entrada, hora_salida, fecha, actividad) VALUES (?, ?, ?, ?, ?)",
+            (nombre, hora_entrada, hora_salida, fecha, actividad),
         )
         conn.commit()
         
@@ -67,7 +71,7 @@ def registrar_asistencia(nombre, fecha, hora_entrada, hora_salida):
 
 # Función para guardar en Excel
 def guardar_en_excel():
-    df = pd.read_sql_query("SELECT id AS 'No.', nombre AS 'Nombre del Docente', hora_entrada AS 'Hora de Entrada', firma_entrada AS 'Firma Entrada', hora_salida AS 'Hora de Salida', firma_salida AS 'Firma Salida', fecha FROM asistencia", conn)
+    df = pd.read_sql_query("SELECT id AS 'No.', nombre AS 'Nombre del Docente', hora_entrada AS 'Hora de Entrada', firma_entrada AS 'Firma Entrada', hora_salida AS 'Hora de Salida', firma_salida AS 'Firma Salida', fecha, actividad FROM asistencia", conn)
     
     # Guardar en Excel
     df.to_excel(EXCEL_PATH, index=False)
@@ -75,14 +79,14 @@ def guardar_en_excel():
 
 # Botón para registrar asistencia
 if st.button("Registrar Asistencia"):
-    if nombre:
-        registrar_asistencia(nombre, fecha, hora_entrada, hora_salida)
+    if nombre and actividad:
+        registrar_asistencia(nombre, fecha, hora_entrada, hora_salida, actividad)
     else:
         st.error("❌ Debe completar todos los campos antes de registrar la asistencia.")
 
 # Mostrar registros en la interfaz
 st.header("📄 Registros de Asistencia")
-df_asistencia = pd.read_sql_query("SELECT id AS 'No.', nombre AS 'Nombre del Docente', hora_entrada AS 'Hora de Entrada', firma_entrada AS 'Firma Entrada', hora_salida AS 'Hora de Salida', firma_salida AS 'Firma Salida', fecha FROM asistencia", conn)
+df_asistencia = pd.read_sql_query("SELECT id AS 'No.', nombre AS 'Nombre del Docente', hora_entrada AS 'Hora de Entrada', firma_entrada AS 'Firma Entrada', hora_salida AS 'Hora de Salida', firma_salida AS 'Firma Salida', fecha, actividad FROM asistencia", conn)
 st.dataframe(df_asistencia)
 
 # Cerrar la conexión
